@@ -30,6 +30,9 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
+# Melissa doc snapshot (regenerate: curl docs + node scripts/generate-consumer-result-codes.mjs)
+scripts/melissa-consumer-result-codes.html
+
 # vercel
 .vercel
 

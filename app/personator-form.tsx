@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import type { CodeExpansions, ExpandedCode } from "@/lib/melissa/result-code-lookup";
 
 type RecordResults = {
   name: string;
@@ -15,7 +16,77 @@ type Summary = {
   recordResults: RecordResults;
   consumerRecords?: { recordID: string; results: string }[];
   errorMessages: string[];
+  codeExpansions?: CodeExpansions;
 };
+
+function CodeDescriptions({
+  heading,
+  raw,
+  expanded,
+}: {
+  heading: string;
+  raw: string;
+  expanded: ExpandedCode[];
+}) {
+  const showRaw = raw.trim().length > 0;
+  const showTable = expanded.length > 0;
+  if (!showRaw && !showTable) {
+    return (
+      <div>
+        <p className="text-xs font-medium text-zinc-600 dark:text-zinc-400">
+          {heading}
+        </p>
+        <p className="mt-0.5 font-mono text-xs text-zinc-400">(empty)</p>
+      </div>
+    );
+  }
+  return (
+    <div className="space-y-2">
+      <p className="text-xs font-medium text-zinc-600 dark:text-zinc-400">
+        {heading}
+      </p>
+      {showRaw ? (
+        <p className="break-all font-mono text-xs text-zinc-800 dark:text-zinc-200">
+          {raw}
+        </p>
+      ) : null}
+      {showTable ? (
+        <div className="overflow-x-auto rounded border border-zinc-200 dark:border-zinc-700">
+          <table className="w-full min-w-[min(100%,36rem)] text-left text-xs">
+            <thead>
+              <tr className="border-b border-zinc-200 bg-zinc-100/80 dark:border-zinc-700 dark:bg-zinc-900/50">
+                <th className="px-2 py-1.5 font-medium">Code</th>
+                <th className="px-2 py-1.5 font-medium">Short</th>
+                <th className="px-2 py-1.5 font-medium">Long</th>
+              </tr>
+            </thead>
+            <tbody>
+              {expanded.map((row, i) => (
+                <tr
+                  key={`${heading}-${row.code}-${i}`}
+                  className="border-b border-zinc-100 last:border-0 dark:border-zinc-800"
+                >
+                  <td className="px-2 py-1.5 align-top font-mono">{row.code}</td>
+                  <td className="px-2 py-1.5 align-top text-zinc-800 dark:text-zinc-200">
+                    {row.known ? (row.title ?? "—") : "—"}
+                    {!row.known ? (
+                      <span className="mt-0.5 block text-[10px] text-amber-800 dark:text-amber-400">
+                        Not in bundled Personator Consumer list
+                      </span>
+                    ) : null}
+                  </td>
+                  <td className="px-2 py-1.5 align-top text-zinc-600 dark:text-zinc-400">
+                    {row.known ? (row.description ?? "—") : "—"}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : null}
+    </div>
+  );
+}
 
 type SuccessPayload = {
   melissaStatus: number;
@@ -253,71 +324,84 @@ export function PersonatorForm() {
           )}
 
           {melissa?.summary && (
-            <div className="flex flex-col gap-3 rounded-lg border border-zinc-200 p-4 text-sm dark:border-zinc-800">
+            <div className="flex flex-col gap-4 rounded-lg border border-zinc-200 p-4 text-sm dark:border-zinc-800">
               <p className="font-medium text-zinc-700 dark:text-zinc-300">
                 Result codes
               </p>
-              <dl className="grid gap-2 font-mono text-xs sm:grid-cols-2">
-                <div>
-                  <dt className="text-zinc-500">TransmissionResults</dt>
-                  <dd className="mt-0.5 break-all">
-                    {melissa.summary.transmissionResults || "(empty)"}
-                  </dd>
-                </div>
-                <div>
-                  <dt className="text-zinc-500">Results (top-level)</dt>
-                  <dd className="mt-0.5 break-all">
-                    {melissa.summary.results || "(empty)"}
-                  </dd>
-                </div>
-              </dl>
+              <p className="text-xs text-zinc-500 dark:text-zinc-500">
+                Descriptions come from a local snapshot of the Personator Consumer
+                result-code reference (same doc as GE/SE transmission codes on that
+                page).
+              </p>
+              <CodeDescriptions
+                heading="TransmissionResults"
+                raw={melissa.summary.transmissionResults}
+                expanded={
+                  melissa.summary.codeExpansions?.transmission ?? []
+                }
+              />
+              <CodeDescriptions
+                heading="Results (top-level)"
+                raw={melissa.summary.results}
+                expanded={melissa.summary.codeExpansions?.topLevel ?? []}
+              />
               {melissa.summary.consumerRecords &&
               melissa.summary.consumerRecords.length > 0 ? (
-                <div>
-                  <p className="mb-2 font-medium text-zinc-700 dark:text-zinc-300">
+                <div className="space-y-4">
+                  <p className="text-xs font-medium text-zinc-600 dark:text-zinc-400">
                     Records[].Results (Consumer)
                   </p>
-                  <ul className="space-y-2 font-mono text-xs">
-                    {melissa.summary.consumerRecords.map((r) => (
-                      <li key={r.recordID} className="break-all">
-                        <span className="text-zinc-500">Record {r.recordID}: </span>
-                        {r.results || "(empty)"}
-                      </li>
-                    ))}
-                  </ul>
+                  {melissa.summary.consumerRecords.map((r, idx) => (
+                    <CodeDescriptions
+                      key={r.recordID}
+                      heading={`Record ${r.recordID}`}
+                      raw={r.results}
+                      expanded={
+                        melissa.summary?.codeExpansions?.records[idx]
+                          ?.items ?? []
+                      }
+                    />
+                  ))}
                 </div>
               ) : (
-                <dl className="grid gap-2 font-mono text-xs sm:grid-cols-2">
-                  <div>
-                    <dt className="text-zinc-500">Name.Results</dt>
-                    <dd className="mt-0.5 break-all">
-                      {melissa.summary.recordResults.name || "(empty)"}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt className="text-zinc-500">Address.Results</dt>
-                    <dd className="mt-0.5 break-all">
-                      {melissa.summary.recordResults.address || "(empty)"}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt className="text-zinc-500">Email.Results</dt>
-                    <dd className="mt-0.5 break-all">
-                      {melissa.summary.recordResults.email || "(empty)"}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt className="text-zinc-500">Identity.Results</dt>
-                    <dd className="mt-0.5 break-all">
-                      {melissa.summary.recordResults.identity || "(empty)"}
-                    </dd>
-                  </div>
-                </dl>
+                <div className="space-y-4">
+                  <p className="text-xs font-medium text-zinc-600 dark:text-zinc-400">
+                    Personator Identity-style blocks
+                  </p>
+                  <CodeDescriptions
+                    heading="Name.Results"
+                    raw={melissa.summary.recordResults.name}
+                    expanded={
+                      melissa.summary.codeExpansions?.identity.name ?? []
+                    }
+                  />
+                  <CodeDescriptions
+                    heading="Address.Results"
+                    raw={melissa.summary.recordResults.address}
+                    expanded={
+                      melissa.summary.codeExpansions?.identity.address ?? []
+                    }
+                  />
+                  <CodeDescriptions
+                    heading="Email.Results"
+                    raw={melissa.summary.recordResults.email}
+                    expanded={
+                      melissa.summary.codeExpansions?.identity.email ?? []
+                    }
+                  />
+                  <CodeDescriptions
+                    heading="Identity.Results"
+                    raw={melissa.summary.recordResults.identity}
+                    expanded={
+                      melissa.summary.codeExpansions?.identity.identity ?? []
+                    }
+                  />
+                </div>
               )}
               {melissa.summary.errorMessages.length > 0 && (
                 <div>
                   <p className="mb-1 font-medium text-zinc-700 dark:text-zinc-300">
-                    Messages (descriptions)
+                    Messages (from response JSON)
                   </p>
                   <ul className="list-inside list-disc font-mono text-xs">
                     {melissa.summary.errorMessages.map((m) => (

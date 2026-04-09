@@ -1,4 +1,8 @@
 import { NextResponse } from "next/server";
+import {
+  buildCodeExpansions,
+  type CodeExpansions,
+} from "@/lib/melissa/result-code-lookup";
 
 /** Personator Consumer — not Personator Identity (different host & body shape). */
 const MELISSA_URL =
@@ -24,7 +28,7 @@ type RequestJson = {
   actions?: string;
 };
 
-type PersonatorSummary = {
+type PersonatorSummaryCore = {
   transmissionResults: string;
   results: string;
   recordResults: {
@@ -35,6 +39,10 @@ type PersonatorSummary = {
   };
   consumerRecords?: { recordID: string; results: string }[];
   errorMessages: string[];
+};
+
+type PersonatorSummary = PersonatorSummaryCore & {
+  codeExpansions: CodeExpansions;
 };
 
 function getIdentityRecordResults(parsed: Record<string, unknown>) {
@@ -81,7 +89,7 @@ function collectMessageDescriptions(value: unknown, out: string[], depth = 0) {
   for (const v of Object.values(o)) collectMessageDescriptions(v, out, depth + 1);
 }
 
-function summarizeConsumer(parsed: Record<string, unknown>): PersonatorSummary {
+function summarizeConsumer(parsed: Record<string, unknown>): PersonatorSummaryCore {
   const transmissionResults =
     typeof parsed.TransmissionResults === "string"
       ? parsed.TransmissionResults.trim()
@@ -109,7 +117,7 @@ function summarizeConsumer(parsed: Record<string, unknown>): PersonatorSummary {
   };
 }
 
-function summarizeIdentity(parsed: Record<string, unknown>): PersonatorSummary {
+function summarizeIdentity(parsed: Record<string, unknown>): PersonatorSummaryCore {
   const transmissionResults =
     typeof parsed.TransmissionResults === "string"
       ? parsed.TransmissionResults
@@ -126,7 +134,9 @@ function summarizeIdentity(parsed: Record<string, unknown>): PersonatorSummary {
   };
 }
 
-function summarizeMelissaPayload(parsed: Record<string, unknown>): PersonatorSummary {
+function summarizeMelissaPayload(
+  parsed: Record<string, unknown>,
+): PersonatorSummaryCore {
   if (Array.isArray(parsed.Records)) {
     return summarizeConsumer(parsed);
   }
@@ -223,19 +233,26 @@ export async function POST(request: Request) {
 
   let melissaRaw = rawText;
   let parseError: string | undefined;
-  let summary: PersonatorSummary | undefined;
+  let summaryCore: PersonatorSummaryCore | undefined;
 
   try {
     const parsed = JSON.parse(rawText) as unknown;
     if (parsed && typeof parsed === "object") {
       melissaRaw = JSON.stringify(parsed, null, 2);
-      summary = summarizeMelissaPayload(parsed as Record<string, unknown>);
+      summaryCore = summarizeMelissaPayload(parsed as Record<string, unknown>);
     } else {
       parseError = "Melissa response was not a JSON object";
     }
   } catch {
     parseError = "Melissa response was not valid JSON";
   }
+
+  const summary: PersonatorSummary | undefined = summaryCore
+    ? {
+        ...summaryCore,
+        codeExpansions: buildCodeExpansions(summaryCore),
+      }
+    : undefined;
 
   return NextResponse.json({
     melissaStatus,
