@@ -21,6 +21,7 @@ type RequestJson = {
   firstName?: string;
   lastName?: string;
   email?: string;
+  phoneNumber?: string;
   addressLine1?: string;
   locality?: string;
   administrativeArea?: string;
@@ -194,7 +195,7 @@ export async function POST(request: Request) {
     LastName: body.lastName?.trim() ?? "",
     MelissaAddressKey: "",
     MIK: "",
-    PhoneNumber: "",
+    PhoneNumber: body.phoneNumber?.trim() ?? "",
     PostalCode: body.postalCode?.trim() ?? "",
     RecordID: "1",
     State: body.administrativeArea?.trim() ?? "",

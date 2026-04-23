@@ -105,6 +105,7 @@ export function PersonatorForm() {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
+  const [phoneNumber, setPhoneNumber] = useState("");
   const [addressLine1, setAddressLine1] = useState("");
   const [locality, setLocality] = useState("");
   const [administrativeArea, setAdministrativeArea] = useState("");
@@ -130,6 +131,7 @@ export function PersonatorForm() {
           firstName,
           lastName,
           email,
+          phoneNumber,
           addressLine1,
           locality,
           administrativeArea,
@@ -210,6 +212,17 @@ export function PersonatorForm() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             autoComplete="email"
+          />
+        </label>
+        <label className="flex flex-col gap-1 text-sm">
+          <span className="font-medium">Phone</span>
+          <input
+            type="tel"
+            className="rounded-md border border-zinc-300 bg-white px-3 py-2 text-base dark:border-zinc-700 dark:bg-zinc-900"
+            value={phoneNumber}
+            onChange={(e) => setPhoneNumber(e.target.value)}
+            autoComplete="tel"
+            placeholder="e.g. 5551234567"
           />
         </label>
         <div className="border-t border-zinc-200 pt-3 dark:border-zinc-800">
